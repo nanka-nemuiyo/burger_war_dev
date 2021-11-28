@@ -1,5 +1,3 @@
-[![CI](https://github.com/seigot/burger_war_dev/workflows/CI/badge.svg)](https://github.com/seigot/burger_war_dev/actions?query=workflow%3ACI)
-
 このレポジトリは、大会参加者がロボット動作プログラムを作成するためのベースとなるレポジトリです。
 参加者の方はこのレポジトリをforkして開発をして下さい。
 
