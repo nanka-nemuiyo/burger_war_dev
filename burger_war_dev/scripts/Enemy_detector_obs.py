@@ -18,6 +18,8 @@ class EnemyDetector:
         self.robot_name      = rospy.get_param('~robot_namespace', '')
         self.pub_enemy_x_pos = rospy.Publisher('enemy_x_pos', Float32, queue_size=1)
         self.pub_enemy_y_pos = rospy.Publisher('enemy_y_pos', Float32, queue_size=1)
+        self.pub_my_x_pos = rospy.Publisher('my_x_pos', Float32, queue_size=1)
+        self.pub_my_y_pos = rospy.Publisher('my_y_pos', Float32, queue_size=1)
         
     def obstacles_callback(self, msg):
 
@@ -34,9 +36,8 @@ class EnemyDetector:
             if self.is_point_emnemy(temp_x, temp_y) == False:
                 #print("not det")
                 continue
-            #print("det")
-            #print(temp_x)
-            #print(temp_y)
+            #print("enemy_x = " + str(temp_x))
+            #print("enemy_y = " + str(temp_y))
             #敵の座標をTFでbroadcast
             enemy_frame_name = self.robot_name + '/enemy_' + str(num)
             map_frame_name   = self.robot_name + "/map"
@@ -49,6 +50,20 @@ class EnemyDetector:
                 (trans,rot) = self.tf_listener.lookupTransform(source_frame_name, target_frame_name, rospy.Time(0))
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 continue
+            #print("my_x(m-e) = " + str(trans[0] + temp_x))
+            #print("my_y(m-e) = " + str(trans[1] + temp_y))
+            #print("my_x(e-m) = " + str(temp_x - trans[0]))
+            #print("my_y(e-m) = " + str(temp_y - trans[1]))
+            my_x, my_y = 0,0
+            if -1 < trans[0] + temp_x and trans[0] + temp_x < 1:
+                my_x = trans[0] + temp_x
+            elif -1 < temp_x - trans[0] and temp_x - trans[0] < 1:
+                my_x = temp_x - trans[0]
+
+            if -1 < trans[1] + temp_y and trans[1] + temp_y < 1:
+                my_y = trans[1] + temp_y
+            elif -1 < temp_y - trans[1] and temp_y - trans[1] < 1:
+                my_y = temp_y - trans[1]
 
             len_robot2enemy = math.sqrt(pow(trans[0],2) + pow(trans[1],2))
 
@@ -66,8 +81,12 @@ class EnemyDetector:
 
             #ロボットから敵までの距離をpublish
             self.pub_robot2enemy.publish(closest_enemy_len)
+            #敵の座標と自分の座標？をpublish
             self.pub_enemy_x_pos.publish(closest_enemy_x)
             self.pub_enemy_y_pos.publish(closest_enemy_y)
+            self.pub_my_x_pos.publish(my_x)
+            self.pub_my_y_pos.publish(my_y)
+
 
     def is_point_emnemy(self, point_x, point_y):
         #フィールド内の物体でない、敵と判定する閾値（半径）

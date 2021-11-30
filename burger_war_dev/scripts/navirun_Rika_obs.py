@@ -134,7 +134,7 @@ class NaviBot():
         self.is_second_lap = False
 
         self.is_near_enemy = False
-        self.enemy_direction = None
+        #self.enemy_direction = None
         self.enemy_dist = 0
         self.enemy_rad = 0
         self.near_enemy_twist = Twist()
@@ -145,6 +145,10 @@ class NaviBot():
         self.near_enemy_twist.angular.y = 0.
         self.near_enemy_twist.angular.z = 0.
         self.is_initialized_pose = True
+        self.enemy_x_pos = 0
+        self.enemy_y_pos = 0
+        self.my_x_pos = 0
+        self.my_y_pos = 0
         
         # lidar scan
         self.scan = []
@@ -165,6 +169,8 @@ class NaviBot():
         rospy.Subscriber('odom', Odometry, self.save_detected4 )
         rospy.Subscriber('enemy_x_pos', Float32, self.save_detected5)
         rospy.Subscriber('enemy_y_pos', Float32, self.save_detected6)
+        rospy.Subscriber('my_x_pos', Float32, self.save_detected7)
+        rospy.Subscriber('my_y_pos', Float32, self.save_detected8)
     def getWarState(self):
         resp = requests.get(JUDGE_URL + "/warState")
         self.dic = resp.json()
@@ -201,11 +207,19 @@ class NaviBot():
     def save_detected5(self, data):
         self.enemy_x_pos_str = str(data.data)
         self.enemy_x_pos = float(self.enemy_x_pos_str)
-        #print('save_detecter5:' + str(data))
+        #print('enemy_x_pos : ' + str(self.enemy_x_pos))
     def save_detected6(self, data):
         self.enemy_y_pos_str = str(data.data)
         self.enemy_y_pos = float(self.enemy_y_pos_str)
-        #print('save_detecter6:' + str(data))
+        #print('enemy_y_pos : ' + str(self.enemy_y_pos))
+    def save_detected7(self, data):
+        self.my_x_pos_str = str(data.data)
+        self.my_x_pos = float(self.my_x_pos_str)
+        #print('my_x_pos : ' + str(self.my_x_pos))
+    def save_detected8(self, data):
+        self.my_y_pos_str = str(data.data)
+        self.my_y_pos = float(self.my_y_pos_str)
+        #print('my_y_pos : ' + str(self.my_y_pos))
 
     def setGoal(self,x,y,yaw):
         self.client.wait_for_server()
@@ -265,42 +279,47 @@ class NaviBot():
         flg = True
         symbol = 1
         th = 0
+        self.enemy_pos = np.array([0.0, 0.0])
+        self.my_pos = np.array([0.0, 0.0])
+
         ccw_goal_xyyaw = np.array([ 
-                [symbol * -1  , symbol * 0     , np.mod(pi/4 + th ,2*pi) ],
-                [symbol * -1  , symbol * 0     , np.mod(0 + th ,2*pi) ],
-                [symbol * -1  , symbol * 0  , np.mod(pi*7/4 + th ,2*pi) ], 
-                [symbol * -0.9  , symbol * -0.5     , np.mod(pi*5/3 + th ,2*pi) ],
-                [symbol * 0  , symbol *  -1  , np.mod(pi*3/4 + th ,2*pi) ],
-                [symbol * 0  , symbol *  -1  , np.mod(pi/2 + th ,2*pi) ],
-                [symbol * -0  , symbol *  -1  , np.mod(pi/4 + th ,2*pi) ],
-                [symbol * 0.5     , symbol * -0.9   , np.mod(pi/6 + th ,2*pi) ], 
-                [symbol * 1     , symbol * 0   , np.mod(pi*5/4  + th ,2*pi) ],
-                [symbol * 1     , symbol * 0   , np.mod(pi  + th ,2*pi) ],
-                [symbol * 1   , symbol * 0   , np.mod( pi*3/4     + th ,2*pi) ],
-                [symbol * 0.9   , symbol * 0.5   ,np.mod(pi*2/3   + th ,2*pi) ],
-                [symbol * 0   , symbol *   1   , np.mod(pi*7/4     + th ,2*pi) ],
-                [symbol * 0   , symbol *   1   , np.mod(pi*3/2     + th ,2*pi) ], 
-                [symbol * 0   , symbol *   1   , np.mod(pi*5/4  + th ,2*pi) ],
-                [symbol * -0.5   , symbol * 0.9  , np.mod( pi*7/6    + th ,2*pi) ],
+                [symbol * -0.8  , symbol * 0     , np.mod(0      + th ,2*pi) ], # (1） 
+                [symbol * -0.8  , symbol * -0.2  ,-np.mod(-pi/4  + th ,2*pi) ], 
+                [symbol * -0.8  , symbol * 0     , np.mod(pi/2   + th ,2*pi) ],
+                [symbol * -0.8  , symbol *  0.2  , np.mod(pi/3   + th ,2*pi) ],
+                [symbol * -0.5  , symbol *  0.2  , np.mod(0      + th ,2*pi) ],
+                [symbol * 0     , symbol * 0.4   , np.mod(pi*4/5 + th ,2*pi) ], # (2)
+                [symbol * 0     , symbol * 0.4   , np.mod(-pi/2  + th ,2*pi) ],
+                [symbol * 0.2   , symbol * 0.4   , np.mod( 0     + th ,2*pi) ],
+                [symbol * 0.2   , symbol * 0.4   ,-np.mod(pi/3   + th ,2*pi) ],
+                [symbol * 0.5   , symbol *   0   , np.mod(pi     + th ,2*pi) ], #（3）
+                [symbol * 0.5   , symbol *   0   , np.mod(-pi/2  + th ,2*pi) ],
+                [symbol * 0.2   , symbol * -0.4  , np.mod( pi    + th ,2*pi) ],
+                [symbol * 0.2   , symbol * -0.4  , np.mod(-pi/3  + th ,2*pi) ],
+                [symbol * 0     , symbol * -0.4  , np.mod( 0     + th ,2*pi) ], # (4)
+                [symbol * 0     , symbol * -0.4  , np.mod(-pi*4/5+ th ,2*pi) ],
+                [symbol * 0     , symbol * -0.4  , np.mod( pi    + th ,2*pi) ],
+                [symbol * -0.5  , symbol * 0     , np.mod( pi    + th ,2*pi) ], # (5) 
+                [symbol * -1.40 , symbol * 0     , np.mod( 0     + th ,2*pi) ]
             ])
         # idx=0
         cw_goal_xyyaw = np.array([ 
                 [symbol * -1  , symbol * 0     , np.mod(pi/4 + th ,2*pi) ],
-                [symbol * -0.5   , symbol * 0.9  , np.mod( pi*7/6    + th ,2*pi) ],
-                [symbol * 0   , symbol *   1   , np.mod(pi*5/4  + th ,2*pi) ],
-                [symbol * 0   , symbol *   1   , np.mod(pi*3/2     + th ,2*pi) ], 
-                [symbol * 0   , symbol *   1   , np.mod(pi*7/4     + th ,2*pi) ],
-                [symbol * 0.9   , symbol * 0.5   ,np.mod(pi*2/3   + th ,2*pi) ],
-                [symbol * 1   , symbol * 0   , np.mod( pi*3/4     + th ,2*pi) ],
-                [symbol * 1     , symbol * 0   , np.mod(pi  + th ,2*pi) ],
-                [symbol * 1     , symbol * 0   , np.mod(pi*5/4  + th ,2*pi) ],
-                [symbol * 0.5     , symbol * -0.9   , np.mod(pi/6 + th ,2*pi) ], 
-                [symbol * -0  , symbol *  -1  , np.mod(pi/4 + th ,2*pi) ],
-                [symbol * 0  , symbol *  -1  , np.mod(pi/2 + th ,2*pi) ],  
-                [symbol * 0  , symbol *  -1  , np.mod(pi*3/4 + th ,2*pi) ], 
-                [symbol * -0.9  , symbol * -0.5     , np.mod(pi*5/3 + th ,2*pi) ], 
-                [symbol * -1  , symbol * 0  , np.mod(pi*7/4 + th ,2*pi) ],  
                 [symbol * -1  , symbol * 0     , np.mod(0 + th ,2*pi) ],
+                [symbol * -1  , symbol * 0  , np.mod(pi*7/4 + th ,2*pi) ], 
+                [symbol * -0.9  , symbol * -0.5     , np.mod(pi*5/3 + th ,2*pi) ],#[3]:右
+                [symbol * 0  , symbol *  -1  , np.mod(pi*3/4 + th ,2*pi) ],
+                [symbol * 0  , symbol *  -1  , np.mod(pi/2 + th ,2*pi) ],
+                [symbol * -0  , symbol *  -1  , np.mod(pi/4 + th ,2*pi) ],
+                [symbol * 0.5     , symbol * -0.9   , np.mod(pi/6 + th ,2*pi) ], #[7]:上
+                [symbol * 1     , symbol * 0   , np.mod(pi*5/4  + th ,2*pi) ],
+                [symbol * 1     , symbol * 0   , np.mod(pi  + th ,2*pi) ],
+                [symbol * 1   , symbol * 0   , np.mod( pi*3/4     + th ,2*pi) ],
+                [symbol * 0.9   , symbol * 0.5   ,np.mod(pi*2/3   + th ,2*pi) ],
+                [symbol * 0   , symbol *   1   , np.mod(pi*7/4     + th ,2*pi) ],
+                [symbol * 0   , symbol *   1   , np.mod(pi*3/2     + th ,2*pi) ], 
+                [symbol * 0   , symbol *   1   , np.mod(pi*5/4  + th ,2*pi) ],
+                [symbol * -0.5   , symbol * 0.9  , np.mod( pi*7/6    + th ,2*pi) ],
             ])
 
         while(True):
@@ -311,6 +330,43 @@ class NaviBot():
             is_patrol_mode = True
             detect_inner_th = 1.0
             detect_outer_th = 1.1
+
+            print('enemy_pos : ' + str(self.enemy_x_pos),str(self.enemy_y_pos))
+            #print('enemy_y_pos : ' + str(self.enemy_y_pos))
+            print('my_pos : ' + str(self.my_x_pos),str(self.my_y_pos))
+            #print('my_y_pos : ' + str(self.my_y_pos))
+            if self.is_enemy_detecting:
+                # 古い座標値を記録
+                self.old_enemy_pos = self.enemy_pos
+                self.old_my_pos = self.my_pos 
+                # 新しい座標値を記録
+                self.enemy_pos = np.array([self.enemy_x_pos, self.enemy_y_pos])
+                self.my_pos = np.array([self.my_x_pos, self.my_y_pos])
+                # ベクトルの向きを計算
+                vec_enemy = self.enemy_pos - self.old_enemy_pos
+                vec_my = self.my_pos - self.old_my_pos
+                #self.enemy_direction = np.arctan2(vec_enemy[0], vec_enemy[1])
+                self.my_direction = np.arctan2(vec_my[0], vec_my[1])
+                # ベクトルの向きが自分と相手でちょうどpi違うとき、相手はロボットではないとしてenemy判定解除
+                # 内積を計算
+                inner = np.inner(vec_enemy, vec_my)
+                # ベクトルの長さを計算
+                dis_enemy = np.linalg.norm(vec_enemy)
+                dis_my = np.linalg.norm(vec_my)
+                # 2つのベクトルの成す角を計算
+                theta = np.arccos(inner/(dis_enemy*dis_my))
+                #print('角度'+str(theta))
+                # 2ベクトルの成す角がpi+-2.5%ならenemy判定解除
+                if pi-(pi*0.05) < theta and theta < pi+(pi*0.05):
+                    self.is_enemy_detecting = False
+                    print('これは敵ではない？')
+                elif theta-(theta*0.05) < self.my_direction and self.my_direction < theta+(theta*0.05):
+                    self.is_enemy_detecting = False
+                    print('これは敵ではない？')
+                elif self.enemy_x_pos-(self.enemy_x_pos*0.015) < self.old_enemy_pos[0] and self.old_enemy_pos[0] < self.enemy_x_pos+(self.enemy_x_pos*0.015):
+                    self.is_enemy_detecting = False
+                    print('これは敵ではない？敵の座標が動いていない？')
+
             if not self.is_enemy_detecting:
                 is_patrol_mode = True
             elif self.is_enemy_detecting and flg and detect_inner_th > self.enemy_dist:
@@ -340,16 +396,48 @@ class NaviBot():
                     self.goalcounter += 1
             else:
                 print("Yeah!! Enemy Det!!敵を見るぜ〜")
+                #print('自分の向き'+str(self.my_direction))
+                #print('角度'+str(theta))
                 # 敵の方向を向くモード
                 self.client.cancel_all_goals()
                 # print("POSE TWIST: {}, {}".format(self.pose_twist.linear.x, self.pose_twist.angular.z))
                 # print("ENEMY TWIST: {}, {}".format(self.near_enemy_twist.linear.x, self.near_enemy_twist.angular.z))
                 # print("wall: {}, Enemy: {}, X: {}, Z: {}".format(self.is_near_wall, self.is_near_enemy, twist.linear.x, twist.angular.z))
+                '''
                 twist = Twist()
                 #twist.linear.x = -0.1
                 twist.angular.z = self.enemy_rad
                 print(self.enemy_rad)
                 self.vel_pub.publish(twist)
+                '''
+                if cnt < 1 :
+                        self.odom_prev = self.odom
+                self.client.cancel_all_goals()
+                
+                if cnt > 50 :
+                    #flg = False
+                    self.odom_diff.pose.pose.position.x = self.odom_prev.pose.pose.position.x - self.odom.pose.pose.position.x
+                    self.odom_diff.pose.pose.position.y = self.odom_prev.pose.pose.position.y - self.odom.pose.pose.position.y
+                    
+                    twist = Twist()
+                    #twist.linear.x = 0.1
+                    twist.angular.z = self.enemy_rad
+                    self.vel_pub.publish(twist)
+                    continue
+
+                # import pdb; pdb.set_trace()
+                
+                if self.enemy_dist < 0.5 :
+                    cnt += 1
+                    self.odom_pub.publish(self.odom_prev)
+                # print("POSE TWIST: {}, {}".format(self.pose_twist.linear.x, self.pose_twist.angular.z))
+                # print("ENEMY TWIST: {}, {}".format(self.near_enemy_twist.linear.x, self.near_enemy_twist.angular.z))
+                # print("wall: {}, Enemy: {}, X: {}, Z: {}".format(self.is_near_wall, self.is_near_enemy, twist.linear.x, twist.angular.z))
+                    twist = Twist()
+                    twist.linear.x = 0.1
+                    twist.angular.z = self.enemy_rad
+                    self.vel_pub.publish(twist)
+
                 
                 # pass
                 
