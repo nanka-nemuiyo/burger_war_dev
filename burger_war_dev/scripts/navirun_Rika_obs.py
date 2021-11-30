@@ -331,9 +331,9 @@ class NaviBot():
             detect_inner_th = 1.0
             detect_outer_th = 1.1
 
-            print('enemy_pos : ' + str(self.enemy_x_pos),str(self.enemy_y_pos))
+            #print('enemy_pos : ' + str(self.enemy_x_pos),str(self.enemy_y_pos))
             #print('enemy_y_pos : ' + str(self.enemy_y_pos))
-            print('my_pos : ' + str(self.my_x_pos),str(self.my_y_pos))
+            #print('my_pos : ' + str(self.my_x_pos),str(self.my_y_pos))
             #print('my_y_pos : ' + str(self.my_y_pos))
             if self.is_enemy_detecting:
                 # 古い座標値を記録
@@ -395,7 +395,7 @@ class NaviBot():
                 if (self.goalcounter %4) != 3 and self.targets[self.goalcounter - targetscounter] == "r":
                     self.goalcounter += 1
             else:
-                print("Yeah!! Enemy Det!!敵を見るぜ〜")
+                #print("Yeah!! Enemy Det!!敵を見るぜ〜")
                 #print('自分の向き'+str(self.my_direction))
                 #print('角度'+str(theta))
                 # 敵の方向を向くモード
@@ -415,6 +415,7 @@ class NaviBot():
                 self.client.cancel_all_goals()
                 
                 if cnt > 50 :
+                    print("Yeah!! Enemy Det!!敵を見るぜ〜")
                     #flg = False
                     self.odom_diff.pose.pose.position.x = self.odom_prev.pose.pose.position.x - self.odom.pose.pose.position.x
                     self.odom_diff.pose.pose.position.y = self.odom_prev.pose.pose.position.y - self.odom.pose.pose.position.y
@@ -428,6 +429,7 @@ class NaviBot():
                 # import pdb; pdb.set_trace()
                 
                 if self.enemy_dist < 0.5 :
+                    print("Yeah!! Enemy Det!!敵に攻撃だ！")
                     cnt += 1
                     self.odom_pub.publish(self.odom_prev)
                 # print("POSE TWIST: {}, {}".format(self.pose_twist.linear.x, self.pose_twist.angular.z))
